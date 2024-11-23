@@ -1,0 +1,230 @@
+﻿Test Setup in xUnit
+Unlike other test frameworks (e.g., MSTest, NUnit), xUnit does not have [SetUp] and [TearDown] attributes. Instead, it uses constructors and IDisposable for setup and cleanup logic.
+
+Example: Test Setup Using Constructor and IDisposable
+csharp
+Copy code
+public class Calculator
+{
+    public int Add(int a, int b) => a + b;
+}
+
+public class CalculatorTests : IDisposable
+{
+    private readonly Calculator _calculator;
+
+    // Test setup in the constructor
+    public CalculatorTests()
+    {
+        _calculator = new Calculator();
+    }
+
+    [Fact]
+    public void Add_ShouldReturnCorrectSum()
+    {
+        // Arrange
+        int a = 5, b = 3;
+
+        // Act
+        int result = _calculator.Add(a, b);
+
+        // Assert
+        Assert.Equal(8, result);
+    }
+
+    // Cleanup logic in Dispose method
+    public void Dispose()
+    {
+        // Cleanup resources if needed
+    }
+}
+Most Common xUnit Attributes
+1. [Fact]
+Indicates a single, standalone test method. Use it for unit tests that don’t require multiple sets of input data.
+
+Example:
+
+csharp
+Copy code
+[Fact]
+public void Test_AlwaysPasses()
+{
+    Assert.True(true);
+}
+2. [Theory]
+Used for parameterized tests. It allows you to run the same test logic with multiple sets of data.
+
+Example:
+
+csharp
+Copy code
+[Theory]
+[InlineData(2, 3, 5)]
+[InlineData(-1, 4, 3)]
+[InlineData(0, 0, 0)]
+public void Add_ShouldReturnCorrectSum(int a, int b, int expected)
+{
+    // Arrange
+    var calculator = new Calculator();
+
+    // Act
+    int result = calculator.Add(a, b);
+
+    // Assert
+    Assert.Equal(expected, result);
+}
+3. [InlineData]
+Used with [Theory] to supply a set of parameters to the test.
+
+Example (as above).
+
+4. [ClassData]
+Provides test data from a class implementing IEnumerable<object[]>. Useful for complex or reusable test data.
+
+Example:
+
+csharp
+Copy code
+public class AdditionTestData : IEnumerable<object[]>
+{
+    public IEnumerator<object[]> GetEnumerator()
+    {
+        yield return new object[] { 1, 2, 3 };
+        yield return new object[] { -1, -2, -3 };
+    }
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+}
+
+public class CalculatorTests
+{
+    [Theory]
+    [ClassData(typeof(AdditionTestData))]
+    public void Add_ShouldWorkWithMultipleDataSets(int a, int b, int expected)
+    {
+        var calculator = new Calculator();
+        int result = calculator.Add(a, b);
+        Assert.Equal(expected, result);
+    }
+}
+5. [MemberData]
+Similar to ClassData, but retrieves test data from a method or property.
+
+Example:
+
+csharp
+Copy code
+public class CalculatorTests
+{
+    public static IEnumerable<object[]> AdditionTestData =>
+        new List<object[]>
+        {
+            new object[] { 1, 2, 3 },
+            new object[] { -1, -2, -3 },
+        };
+
+    [Theory]
+    [MemberData(nameof(AdditionTestData))]
+    public void Add_ShouldWorkWithMemberData(int a, int b, int expected)
+    {
+        var calculator = new Calculator();
+        int result = calculator.Add(a, b);
+        Assert.Equal(expected, result);
+    }
+}
+6. [Collection]
+Used to share context between multiple test classes.
+
+Example:
+
+csharp
+Copy code
+[Collection("Shared Calculator Collection")]
+public class CalculatorTests1
+{
+    private readonly Calculator _calculator;
+
+    public CalculatorTests1(CalculatorFixture fixture)
+    {
+        _calculator = fixture.Calculator;
+    }
+
+    [Fact]
+    public void Add_ShouldWorkInTest1()
+    {
+        Assert.Equal(4, _calculator.Add(2, 2));
+    }
+}
+
+[Collection("Shared Calculator Collection")]
+public class CalculatorTests2
+{
+    private readonly Calculator _calculator;
+
+    public CalculatorTests2(CalculatorFixture fixture)
+    {
+        _calculator = fixture.Calculator;
+    }
+
+    [Fact]
+    public void Add_ShouldWorkInTest2()
+    {
+        Assert.Equal(6, _calculator.Add(3, 3));
+    }
+}
+
+public class CalculatorFixture
+{
+    public Calculator Calculator { get; private set; }
+
+    public CalculatorFixture()
+    {
+        Calculator = new Calculator();
+    }
+}
+
+[CollectionDefinition("Shared Calculator Collection")]
+public class CalculatorCollection : ICollectionFixture<CalculatorFixture>
+{
+}
+7. [Skip]
+Skips the test and provides a reason.
+
+Example:
+
+csharp
+Copy code
+[Fact(Skip = "This test is temporarily disabled.")]
+public void DisabledTest()
+{
+    Assert.True(false);
+}
+8. [Trait]
+Used to add metadata to tests for filtering and grouping.
+
+Example:
+
+csharp
+Copy code
+[Fact]
+[Trait("Category", "Unit")]
+public void TestWithTrait()
+{
+    Assert.True(true);
+}
+Summary Table of Attributes
+Attribute	Purpose
+[Fact]	Marks a test method as a standalone test.
+[Theory]	Marks a parameterized test.
+[InlineData]	Supplies inline data to a [Theory] test.
+[ClassData]	Supplies data to a [Theory] test from a class implementing IEnumerable<object[]>.
+[MemberData]	Supplies data to a [Theory] test from a property, method, or field.
+[Collection]	Shares test context between test classes.
+[Trait]	Adds metadata to tests for filtering and categorization.
+[Skip]	Skips the test and provides a reason.
+Best Practices
+Use [Fact] for isolated, non-parameterized tests.
+Use [Theory] with [InlineData], [ClassData], or [MemberData] for parameterized tests.
+Use constructor-based setup for initializing objects or services shared across tests.
+Use disposable objects to clean up resources when tests complete.
+Let me know if you'd like help implementing a specific test setup!
